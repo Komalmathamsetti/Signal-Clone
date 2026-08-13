@@ -1,12 +1,61 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, CheckCheck, MoreHorizontal, Phone, Search, Send, Smile, Video, Paperclip, Users, ArrowLeft } from "lucide-react";
+import { Check, CheckCheck, MoreHorizontal, Phone, Search, Send, Smile, Video, Paperclip, ArrowLeft } from "lucide-react";
 import Avatar from "./Avatar";
 import type { Conversation, Message, User } from "@/lib/types";
 
 function formatTime(value: string) {
   return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
+function formatLastSeen(lastSeen?: string | null) {
+  if (!lastSeen) {
+    return "Offline";
+  }
 
+  const date = new Date(lastSeen);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Offline";
+  }
+
+  const diffMs = Date.now() - date.getTime();
+  const diffSeconds = Math.max(0, Math.floor(diffMs / 1000));
+
+  if (diffSeconds < 60) {
+    return "Last seen just now";
+  }
+
+  const diffMinutes = Math.floor(diffSeconds / 60);
+
+  if (diffMinutes < 60) {
+    return `Last seen ${diffMinutes} ${
+      diffMinutes === 1 ? "minute" : "minutes"
+    } ago`;
+  }
+
+  const diffHours = Math.floor(diffMinutes / 60);
+
+  if (diffHours < 24) {
+    return `Last seen ${diffHours} ${
+      diffHours === 1 ? "hour" : "hours"
+    } ago`;
+  }
+
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffDays === 1) {
+    return "Last seen yesterday";
+  }
+
+  if (diffDays < 7) {
+    return `Last seen ${diffDays} days ago`;
+  }
+
+  return `Last seen ${date.toLocaleDateString([], {
+    day: "numeric",
+    month: "short",
+    year: "numeric"
+  })}`;
+}
 function Status({ status }: { status: Message["status"] }) {
   if (status === "sending") {
     return <span className="status-sending">◷</span>;
@@ -43,8 +92,14 @@ export default function ChatPane({
   onInfo: () => void;
 }) {
   const [text, setText] = useState("");
+  const [,setLastSeenTick] = useState(0);
   const endRef = useRef<HTMLDivElement>(null);
-
+  useEffect(() => {
+  const interval = setInterval(() => {
+    setLastSeenTick(value => value + 1);
+  }, 60000);
+  return () => clearInterval(interval);
+  }, []);
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, typing]);
@@ -65,10 +120,18 @@ export default function ChatPane({
       <header className="chat-header">
         <button className="mobile-back icon-btn" onClick={onBack}><ArrowLeft size={20} /></button>
         <button className="chat-person" onClick={onInfo}>
-          <Avatar src={conversation.avatar_url} name={conversation.name} size={42} online={!isGroup && other?.is_online} />
+          <Avatar
+          src={conversation.avatar_url}
+          name={conversation.name}
+          size={42}
+          online={!isGroup && other?.is_online}
+          />
           <span>
             <strong>{conversation.name}</strong>
-            <small>{typing ? "typing…" : conversation.subtitle}</small>
+            <small>
+              {typing ? "typing…" : isGroup ? `${conversation.member_count} ${
+                conversation.member_count === 1 ? "member" : "members"}`: other?.is_online? "Online": formatLastSeen(other?.last_seen)}
+            </small>
           </span>
         </button>
         <div className="header-actions">

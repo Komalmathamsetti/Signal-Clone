@@ -7,7 +7,6 @@ import AuthScreen from "./AuthScreen";
 import Sidebar from "./Sidebar";
 import ChatPane from "./ChatPane";
 import { GroupInfoModal, GroupModal, NewChatModal, SettingsModal } from "./Modals";
-
 export default function Messenger() {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -151,14 +150,60 @@ export default function Messenger() {
         setConversations(prev =>
           prev.map(c => c.id === event.conversation_id ? { ...c, unread_count: 0 } : c));
         }else if (event.type === "presence") {
-        setConversations(prev => prev.map(c => ({
-          ...c,
-          members: c.members.map(m => m.id === event.user_id ? { ...m, is_online: event.is_online } : m),
-          subtitle: c.type === "direct" && c.members.some(m => m.id !== user.id && m.id === event.user_id)
-            ? (event.is_online ? "Online" : c.subtitle)
-            : c.subtitle
-        })));
-      }
+  const presenceTime = new Date().toISOString();
+
+  setConversations(prev =>
+    prev.map(c => ({
+      ...c,
+
+      members: c.members.map(m =>
+        m.id === event.user_id
+          ? {
+              ...m,
+              is_online: event.is_online,
+              last_seen: event.is_online
+                ? m.last_seen
+                : presenceTime
+            }
+          : m
+      ),
+
+      subtitle:
+        c.type === "direct" &&
+        c.members.some(
+          m =>
+            m.id !== user.id &&
+            m.id === event.user_id
+        )
+          ? event.is_online
+            ? "Online"
+            : "Offline"
+          : c.subtitle
+    }))
+  );
+
+  setSelected(prev => {
+    if (!prev) {
+      return prev;
+    }
+
+    return {
+      ...prev,
+
+      members: prev.members.map(m =>
+        m.id === event.user_id
+          ? {
+              ...m,
+              is_online: event.is_online,
+              last_seen: event.is_online
+                ? m.last_seen
+                : presenceTime
+            }
+          : m
+      )
+    };
+  });
+}
     };
     socket.onclose = () => {
       if (token && user) reconnectTimer.current = setTimeout(connectWs, 1500);

@@ -25,7 +25,13 @@ Base = declarative_base()
 
 def now():
     return datetime.now(timezone.utc)
+def utc_iso(value):
+    if value is None:
+        return None
 
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc).isoformat()
 
 class User(Base):
     __tablename__ = "users"
@@ -176,7 +182,7 @@ def user_dict(u: User):
         "avatar_url": u.avatar_url,
         "bio": u.bio or "",
         "is_online": bool(u.is_online),
-        "last_seen": u.last_seen.isoformat() if u.last_seen else None,
+        "last_seen": utc_iso(u.last_seen),
     }
 
 
@@ -190,7 +196,7 @@ def message_dict(m: Message, db: Session):
         "sender_avatar": sender.avatar_url if sender else None,
         "body": m.body,
         "status": m.status,
-        "created_at": m.created_at.isoformat(),
+        "created_at": utc_iso(m.created_at),
     }
 
 

@@ -3,6 +3,7 @@ import { X, Search, UserPlus, Users, LogOut, Shield, Bell, Palette, Smartphone, 
 import Avatar from "./Avatar";
 import type { Conversation, User } from "@/lib/types";
 import { api } from "@/lib/api";
+import toast from "react-hot-toast";
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
@@ -32,9 +33,12 @@ export function NewChatModal({
     try {
       const c = await api.direct(token, u.id);
       onCreated(c);
+      toast.success(`Chat started with ${u.display_name}`);
       onClose();
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Could not create chat");
+      const message = e instanceof Error? e.message : "Could not create chat";
+      setMessage(message);
+      toast.error(message);
     }
   }
 
@@ -59,12 +63,20 @@ export function GroupModal({
   const [error, setError] = useState("");
 
   async function create() {
-    if (!name.trim()) return setError("Enter a group name");
+    if (!name.trim()){
+      setError("Enter a group name");
+      toast.error("Enter a group name");
+      return;
+    }
     try {
       const c = await api.createGroup(token, name, selected);
-      onCreated(c); onClose();
+      onCreated(c); 
+      toast.success("Group created successfully");
+      onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not create group");
+      const message = e instanceof Error ? e.message : "Could not create the group";
+      setError(message);
+      toast.error(message);
     }
   }
 
@@ -89,7 +101,16 @@ export function SettingsModal({
   user, token, onClose, onLogout, onTheme
 }: { user: User; token: string; onClose: () => void; onLogout: () => void; onTheme: () => void }) {
   const [theme, setTheme] = useState(typeof document !== "undefined" && document.documentElement.dataset.theme === "dark" ? "Dark" : "Light");
-  async function logout() { await api.logout(token).catch(() => {}); onLogout(); }
+  async function logout(){
+    try{
+      await api.logout(token);
+      toast.success("Logges out successfully");
+      onLogout();
+    }catch{
+      toast.error("Logout Failed");
+      onLogout();
+    }
+  }
 
   return <Modal title="Settings" onClose={onClose}>
     <div className="settings-profile">
@@ -196,15 +217,16 @@ export function GroupInfoModal({token,conversation,currentUser,onClose,onMembers
 
       setMembers(data.members);
       onMembersChanged(data.members);
-
+      toast.success(`${user.display_name} added to the group`);
       setSearch("");
       setUsers([]);
     } catch (e) {
-      setError(
+      const message=
         e instanceof Error
           ? e.message
-          : "Could not add member."
-      );
+          : "Could not add member.";
+          setError(message);
+          toast.error(message);
     } finally {
       setActionLoading(null);
     }
@@ -231,12 +253,20 @@ export function GroupInfoModal({token,conversation,currentUser,onClose,onMembers
 
       setMembers(data.members);
       onMembersChanged(data.members);
+      const removedMember = members.find(
+        member => member.id === userId
+      );
+      toast.success(
+        removedMember? `${removedMember.display_name} removed from the group`: "Member removed"
+      );
     } catch (e) {
-      setError(
+      const message = 
         e instanceof Error
           ? e.message
-          : "Could not remove member."
-      );
+          : "Could not remove member.";
+          setError(message);
+          toast.error(message);
+       
     } finally {
       setActionLoading(null);
     }
