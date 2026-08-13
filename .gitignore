@@ -1,0 +1,12 @@
+node_modules/
+.next/
+.env
+.env.local
+.venv/
+__pycache__/
+*.pyc
+*.db
+*.sqlite
+*.sqlite3
+.vercel/
+.DS_Store
