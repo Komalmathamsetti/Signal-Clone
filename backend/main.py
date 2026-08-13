@@ -589,115 +589,234 @@ manager = ConnectionManager()
 
 
 @app.websocket("/ws/{user_id}")
-async def websocket_endpoint(websocket: WebSocket, user_id: int, token: str = Query(...)):
+async def websocket_endpoint(
+    websocket: WebSocket,
+    user_id: int,
+    token: str = Query(...)
+):
+    # Validate token
     db = SessionLocal()
+
     try:
         user = get_user_from_token(token, db)
+
         if user.id != user_id:
             await websocket.close(code=1008)
             return
+
     except HTTPException:
         await websocket.close(code=1008)
         return
+
     finally:
         db.close()
 
+    # Establish WebSocket connection
     await manager.connect(user_id, websocket)
+
     db = SessionLocal()
+
     try:
+        # Mark user online
         u = db.get(User, user_id)
+
         if u:
             u.is_online = 1
             u.last_seen = now()
             db.commit()
 
-        await manager.broadcast_all({"type": "presence", "user_id": user_id, "is_online": True})
+        # Send all currently-online users to the newly connected user
+        for online_user_id in list(manager.connections.keys()):
+            if online_user_id != user_id:
+                await websocket.send_json({
+                    "type": "presence",
+                    "user_id": online_user_id,
+                    "is_online": True
+                })
 
+        # Notify everyone that this user is online
+        await manager.broadcast_all({
+            "type": "presence",
+            "user_id": user_id,
+            "is_online": True
+        })
+
+        # Listen for WebSocket events
         while True:
             event = await websocket.receive_json()
             event_type = event.get("type")
 
+            # -------------------------
+            # PING
+            # -------------------------
             if event_type == "ping":
-                await websocket.send_json({"type": "pong"})
+                await websocket.send_json({
+                    "type": "pong"
+                })
 
+            # -------------------------
+            # TYPING
+            # -------------------------
             elif event_type == "typing":
                 conversation_id = int(event.get("conversation_id"))
-                members = db.query(ConversationMember).filter_by(conversation_id=conversation_id).all()
+
+                members = db.query(ConversationMember).filter_by(
+                    conversation_id=conversation_id
+                ).all()
+
                 await manager.send_users(
                     [m.user_id for m in members if m.user_id != user_id],
                     {
                         "type": "typing",
                         "conversation_id": conversation_id,
                         "user_id": user_id,
-                        "is_typing": bool(event.get("is_typing")),
-                    },
+                        "is_typing": bool(event.get("is_typing"))
+                    }
                 )
 
+            # -------------------------
+            # READ RECEIPT
+            # -------------------------
             elif event_type == "read":
                 conversation_id = int(event.get("conversation_id"))
+
                 messages = db.query(Message).filter(
                     Message.conversation_id == conversation_id,
-                    Message.sender_id != user_id,
+                    Message.sender_id != user_id
                 ).all()
+
+                message_ids = []
+
                 for m in messages:
+                    message_ids.append(m.id)
+
+                    if not db.query(MessageRead).filter_by(
+                        message_id=m.id,
+                        user_id=user_id
+                    ).first():
+                        db.add(
+                            MessageRead(
+                                message_id=m.id,
+                                user_id=user_id
+                            )
+                        )
+
                     m.status = "read"
-                    if not db.query(MessageRead).filter_by(message_id=m.id, user_id=user_id).first():
-                        db.add(MessageRead(message_id=m.id, user_id=user_id))
+
                 db.commit()
-                members = db.query(ConversationMember).filter_by(conversation_id=conversation_id).all()
+
+                members = db.query(ConversationMember).filter_by(
+                    conversation_id=conversation_id
+                ).all()
+
                 await manager.send_users(
                     [m.user_id for m in members if m.user_id != user_id],
-                    {"type": "read", "conversation_id": conversation_id, "user_id": user_id},
+                    {
+                        "type": "read",
+                        "conversation_id": conversation_id,
+                        "user_id": user_id,
+                        "message_ids": message_ids
+                    }
                 )
 
+            # -------------------------
+            # NEW MESSAGE
+            # -------------------------
             elif event_type == "message":
                 conversation_id = int(event.get("conversation_id"))
                 body = str(event.get("body", "")).strip()
+
                 if not body:
                     continue
 
+                # Verify membership
                 member = db.query(ConversationMember).filter_by(
-                    conversation_id=conversation_id, user_id=user_id
+                    conversation_id=conversation_id,
+                    user_id=user_id
                 ).first()
+
                 if not member:
-                    await websocket.send_json({"type": "error", "message": "Not a conversation member"})
+                    await websocket.send_json({
+                        "type": "error",
+                        "message": "Not a conversation member"
+                    })
                     continue
 
+                # Find recipients
                 recipient_ids = [
-                    m.user_id for m in db.query(ConversationMember).filter_by(
+                    m.user_id
+                    for m in db.query(ConversationMember).filter_by(
                         conversation_id=conversation_id
-                    ).all() if m.user_id != user_id
+                    ).all()
+                    if m.user_id != user_id
                 ]
-                recipient_online = any(uid in manager.connections for uid in recipient_ids)
+
+                # Determine delivery status
+                recipient_online = any(
+                    uid in manager.connections
+                    for uid in recipient_ids
+                )
 
                 msg = Message(
                     conversation_id=conversation_id,
                     sender_id=user_id,
                     body=body,
                     status="delivered" if recipient_online else "sent",
-                    created_at=now(),
+                    created_at=now()
                 )
+
                 db.add(msg)
+
+                # Update conversation activity
                 c = db.get(Conversation, conversation_id)
-                c.updated_at = now()
+
+                if c:
+                    c.updated_at = now()
+
                 db.commit()
                 db.refresh(msg)
 
-                members = db.query(ConversationMember).filter_by(conversation_id=conversation_id).all()
-                payload = {"type": "message", "message": message_dict(msg, db)}
-                await manager.send_users([m.user_id for m in members], payload)
+                # Send message to all conversation members
+                members = db.query(ConversationMember).filter_by(
+                    conversation_id=conversation_id
+                ).all()
+
+                payload = {
+                    "type": "message",
+                    "message": message_dict(msg, db)
+                }
+
+                await manager.send_users(
+                    [m.user_id for m in members],
+                    payload
+                )
 
     except WebSocketDisconnect:
         pass
+
     finally:
+        # Remove this WebSocket connection
         manager.disconnect(user_id, websocket)
-        db2 = SessionLocal()
-        try:
-            u = db2.get(User, user_id)
-            if u:
-                u.is_online = 0
-                u.last_seen = now()
-                db2.commit()
-        finally:
-            db2.close()
-        await manager.broadcast_all({"type": "presence", "user_id": user_id, "is_online": False})
+
+        # Only mark offline if the user has no other active connections
+        if user_id not in manager.connections:
+
+            db2 = SessionLocal()
+
+            try:
+                u = db2.get(User, user_id)
+
+                if u:
+                    u.is_online = 0
+                    u.last_seen = now()
+                    db2.commit()
+
+            finally:
+                db2.close()
+
+            # Notify everyone that the user went offline
+            await manager.broadcast_all({
+                "type": "presence",
+                "user_id": user_id,
+                "is_online": False
+            })
