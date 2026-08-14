@@ -12,6 +12,12 @@ A full-stack Signal-inspired secure messaging demo built for an SDE assignment.
 - Deployment: Vercel (frontend) + Render (backend)
 
 > This project intentionally mocks cryptographic key exchange and phone verification. It is a functional messaging demo, not a production E2EE implementation.
+## Live Demo
+
+- Frontend: https://signal-clone-tbsq.vercel.app
+- Backend API: https://signal-clone-4knz.onrender.com
+- API Documentation: https://signal-clone-4knz.onrender.com/docs
+- Health Check: https://signal-clone-4knz.onrender.com/health
 
 ## Features
 
@@ -31,7 +37,8 @@ A full-stack Signal-inspired secure messaging demo built for an SDE assignment.
 - Persistent messages and conversations
 - Unread counts
 - Settings placeholders
-- Dark/light theme
+- Toast notifications for user feedback and actions
+- Emoji Picker
 - Responsive layout
 - Seed data
 - Mocked calls/stories/linked devices/E2EE sections
@@ -84,7 +91,12 @@ npm run dev
 Open http://localhost:3000.
 
 ## Environment variables
+Backend:
 
+```env
+JWT_SECRET=your-secret
+FRONTEND_URL=https://signal-clone-tbsq.vercel.app
+DATABASE_URL=sqlite:///./signal.db
 Frontend:
 
 ```env
@@ -95,8 +107,8 @@ NEXT_PUBLIC_WS_URL=ws://localhost:8000
 Production:
 
 ```env
-NEXT_PUBLIC_API_URL=https://YOUR-BACKEND.onrender.com
-NEXT_PUBLIC_WS_URL=wss://YOUR-BACKEND.onrender.com
+NEXT_PUBLIC_API_URL=https://signal-clone-4knz.onrender.com
+NEXT_PUBLIC_WS_URL=wss://signal-clone-4knz.onrender.com
 ```
 
 ## Architecture
@@ -246,8 +258,8 @@ Create a Vercel project pointing at `frontend/`.
 Add:
 
 ```env
-NEXT_PUBLIC_API_URL=https://YOUR-BACKEND.onrender.com
-NEXT_PUBLIC_WS_URL=wss://YOUR-BACKEND.onrender.com
+NEXT_PUBLIC_API_URL=https://signal-clone-4knz.onrender.com
+NEXT_PUBLIC_WS_URL=wss://signal-clone-4knz.onrender.com
 ```
 
 Then redeploy.

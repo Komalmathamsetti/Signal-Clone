@@ -4,8 +4,8 @@
 - [ ] `cd backend`
 - [ ] Create Python venv
 - [ ] `pip install -r requirements.txt`
-- [ ] `python seed.py`
-- [ ] `uvicorn main:app --reload --port 8000`
+- [ ] `python seed.py (Only for the initial database seeding)`
+- [ ] `python -m uvicorn main:app --reload --port 8000`
 - [ ] Open `/docs`
 - [ ] Confirm `/health`
 
@@ -33,17 +33,17 @@
 - [ ] New Web Service
 - [ ] Root directory: `backend`
 - [ ] Build: `pip install -r requirements.txt`
-- [ ] Start: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+- [ ] Start: `python seed.py && uvicorn main:app --host 0.0.0.0 --port $PORT`
 - [ ] `JWT_SECRET`: generated secret
-- [ ] `FRONTEND_URL`: Vercel URL after frontend exists
-- [ ] Open `https://YOUR-BACKEND.onrender.com/health`
+- [ ] `FRONTEND_URL`: https://signal-clone-tbsq.vercel.app/
+- [ ] Open `https://signal-clone-4knz.onrender.com/health`
 - [ ] Confirm WebSocket uses `wss://`
 
 ## 5. Vercel frontend
 - [ ] Import the GitHub repository
 - [ ] Root directory: `frontend`
-- [ ] `NEXT_PUBLIC_API_URL=https://YOUR-BACKEND.onrender.com`
-- [ ] `NEXT_PUBLIC_WS_URL=wss://YOUR-BACKEND.onrender.com`
+- [ ] `NEXT_PUBLIC_API_URL=https://signal-clone-4knz.onrender.com`
+- [ ] `NEXT_PUBLIC_WS_URL=wss://signal-clone-4knz.onrender.com`
 - [ ] Deploy
 - [ ] Update Render `FRONTEND_URL` to the final Vercel URL
 - [ ] Redeploy backend
@@ -57,5 +57,5 @@
 - [ ] Create group
 - [ ] Add/remove member
 - [ ] Refresh browser and confirm session persists
-- [ ] Toggle dark mode
+- [ ] Emoji Sender
 - [ ] Verify `/docs`
