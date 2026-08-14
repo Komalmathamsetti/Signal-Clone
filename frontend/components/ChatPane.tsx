@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, CheckCheck, MoreHorizontal, Phone, Search, Send, Smile, Video, Paperclip, ArrowLeft } from "lucide-react";
 import Avatar from "./Avatar";
 import type { Conversation, Message, User } from "@/lib/types";
+import EmojiPicker,{type EmojiClickData} from "emoji-picker-react";
 
 function formatTime(value: string) {
   return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -92,6 +93,7 @@ export default function ChatPane({
   onInfo: () => void;
 }) {
   const [text, setText] = useState("");
+  const [showEmojiPicker,setShowEmojiPicker] = useState(false);
   const [,setLastSeenTick] = useState(0);
   const endRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -106,7 +108,9 @@ export default function ChatPane({
 
   const other = useMemo(() => conversation.members.find(m => m.id !== user.id), [conversation.members, user.id]);
   const isGroup = conversation.type === "group";
-
+  function handleEmojiClick(emojiData:EmojiClickData){
+    setText(prev=>prev+emojiData.emoji);
+  }
   function send() {
     const value = text.trim();
     if (!value) return;
@@ -193,7 +197,16 @@ export default function ChatPane({
             }}
             placeholder="Signal message"
           />
-          <button className="icon-btn"><Smile size={20} /></button>
+          <div className="emoji-picker-wrapper">
+            {showEmojiPicker && (
+              <div className="emoji-picker">
+                <EmojiPicker onEmojiClick={handleEmojiClick} width={320} height={400}/>
+              </div>
+            )}
+            <button className="icon-btn" type="button" title="Emoji" onClick={() => setShowEmojiPicker(prev => !prev)}>
+              <Smile size={20} />
+            </button>
+          </div>
           <button className="send-btn" onClick={send}><Send size={18} /></button>
         </div>
       </div>

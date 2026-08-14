@@ -238,6 +238,16 @@ input { outline: none; }
   opacity: 0.5;
   cursor: not-allowed;
 }
+.emoji-picker-wrapper {
+  position: relative;
+}
+
+.emoji-picker {
+  position: absolute;
+  right: 0;
+  bottom: 52px;
+  z-index: 1000;
+}
 @media (max-width: 800px) {
   .sidebar { width:100%; min-width:0; }
   .chat-pane { position:fixed; inset:0; z-index:10; background:var(--bg); }
