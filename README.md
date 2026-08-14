@@ -34,7 +34,7 @@ A full-stack Signal-inspired secure messaging demo built for an SDE assignment.
 - Group creation
 - Group members
 - Admin add/remove members
-- Persistent messages and conversations
+- Database-persisted messages and conversations
 - Unread counts
 - Settings placeholders
 - Toast notifications for user feedback and actions
@@ -263,6 +263,10 @@ NEXT_PUBLIC_WS_URL=wss://signal-clone-4knz.onrender.com
 ```
 
 Then redeploy.
+
+### SQLite deployment note
+
+The application uses SQLite as required by the assignment. SQLite data is stored in the backend filesystem. For production deployments, persistent storage should be configured for the hosting environment if long-term database persistence across service replacement/redeployment is required.
 
 ## Important evaluation explanation
 
